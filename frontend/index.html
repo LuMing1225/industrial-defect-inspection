@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>工业缺陷干扰项过滤系统</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- ============ 顶部标题栏 ============ -->
+  <header class="topbar">
+    <div class="title">
+      <span class="logo">◆</span>
+      <h1>工业缺陷干扰项过滤系统</h1>
+      <span class="sub">Multi-Feature Filtering · SAM Fusion · VLM Final Check</span>
+    </div>
+    <div class="status-panel">
+      <div class="status-item">
+        <span class="dot" id="dot-backend"></span>
+        <span>后端连接</span>
+      </div>
+      <div class="status-item">
+        <span class="dot" id="dot-ollama"></span>
+        <span>Ollama VLM</span>
+      </div>
+      <div class="status-item">
+        <span class="dot" id="dot-gpu"></span>
+        <span id="gpu-text">GPU: 检测中</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ 主体三栏布局 ============ -->
+  <main class="layout">
+    <!-- ========== 左侧：上传 + 参数 ========== -->
+    <aside class="col left">
+      <!-- 上传区 -->
+      <section class="card">
+        <h2>① 图像上传</h2>
+        <div id="drop-zone" class="drop-zone">
+          <p>拖拽图片到此处</p>
+          <p class="or">或</p>
+          <label class="btn-primary" for="file-input">点击选择图片</label>
+          <input type="file" id="file-input" accept="image/*" hidden />
+        </div>
+        <div class="preview-wrap">
+          <img id="preview-img" alt="原图预览" />
+        </div>
+        <button id="btn-detect" class="btn-primary full" disabled>开始检测</button>
+      </section>
+
+      <!-- 参数调节面板 -->
+      <section class="card">
+        <h2>② 过滤参数（实时生效）</h2>
+        <div class="slider-row">
+          <label>圆度阈值 <span id="v-roundness" class="val">0.82</span></label>
+          <input type="range" id="s-roundness" min="0.5" max="1.0" step="0.01" value="0.82" />
+        </div>
+        <div class="slider-row">
+          <label>灰度方差阈值 <span id="v-vargray" class="val">0.15</span></label>
+          <input type="range" id="s-vargray" min="0.0" max="0.5" step="0.01" value="0.15" />
+        </div>
+        <div class="slider-row">
+          <label>LBP 对比度阈值 <span id="v-lbp" class="val">0.20</span></label>
+          <input type="range" id="s-lbp" min="0.0" max="0.6" step="0.01" value="0.20" />
+        </div>
+        <div class="slider-row">
+          <label>综合评分阈值 <span id="v-score" class="val">0.65</span></label>
+          <input type="range" id="s-score" min="0.3" max="0.9" step="0.01" value="0.65" />
+        </div>
+        <h3>权重分配</h3>
+        <div class="slider-row">
+          <label>w1 圆度 <span id="v-w1" class="val">0.40</span></label>
+          <input type="range" id="s-w1" min="0" max="1" step="0.05" value="0.4" />
+        </div>
+        <div class="slider-row">
+          <label>w2 灰度方差 <span id="v-w2" class="val">0.30</span></label>
+          <input type="range" id="s-w2" min="0" max="1" step="0.05" value="0.3" />
+        </div>
+        <div class="slider-row">
+          <label>w3 LBP纹理 <span id="v-w3" class="val">0.30</span></label>
+          <input type="range" id="s-w3" min="0" max="1" step="0.05" value="0.3" />
+        </div>
+      </section>
+    </aside>
+
+    <!-- ========== 中央：结果展示 ========== -->
+    <section class="col center">
+      <div class="card result-card">
+        <div class="result-header">
+          <h2>③ 检测结果</h2>
+          <div class="view-toggle">
+            <button id="tab-annotated" class="tab active">标注结果</button>
+            <button id="tab-original" class="tab">原图</button>
+          </div>
+        </div>
+        <div class="image-stage">
+          <img id="result-annotated" src="" alt="标注结果" style="display:block" />
+          <img id="result-original" src="" alt="原图" style="display:none" />
+          <div id="empty-hint" class="empty-hint">等待上传图片…</div>
+        </div>
+      </div>
+
+      <!-- 缺陷详情卡片 -->
+      <section class="card">
+        <h2>④ 候选区域详情 <span id="defect-count" class="badge">0</span></h2>
+        <div id="defect-list" class="defect-list">
+          <p class="muted">暂无数据</p>
+        </div>
+      </section>
+    </section>
+
+    <!-- ========== 右侧：时序 + 统计 ========== -->
+    <aside class="col right">
+      <section class="card">
+        <h2>⑤ 流水线时序</h2>
+        <div class="chart" id="timing-chart">
+          <div class="bar-row">
+            <span class="bar-label">初筛</span>
+            <div class="bar-track"><div class="bar bar-feature" id="bar-feature" style="width:0%"></div></div>
+            <span class="bar-val" id="val-feature">0 ms</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">SAM融合</span>
+            <div class="bar-track"><div class="bar bar-sam" id="bar-sam" style="width:0%"></div></div>
+            <span class="bar-val" id="val-sam">0 ms</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">VLM终审</span>
+            <div class="bar-track"><div class="bar bar-vlm" id="bar-vlm" style="width:0%"></div></div>
+            <span class="bar-val" id="val-vlm">0 ms</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>⑥ 统计面板</h2>
+        <div class="stat-grid">
+          <div class="stat"><span class="num" id="st-candidates">0</span><span class="lab">总候选</span></div>
+          <div class="stat"><span class="num" id="st-filtered">0</span><span class="lab">初筛过滤</span></div>
+          <div class="stat"><span class="num" id="st-vlm">0</span><span class="lab">VLM检查</span></div>
+          <div class="stat"><span class="num" id="st-defects">0</span><span class="lab">最终缺陷</span></div>
+          <div class="stat"><span class="num" id="st-interf">0</span><span class="lab">干扰项</span></div>
+          <div class="stat"><span class="num" id="st-rate">0%</span><span class="lab">干扰排除率</span></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>⑦ 性能指标</h2>
+        <div class="perf-row"><span>当前帧总耗时</span><span id="perf-total" class="num">-- ms</span></div>
+        <div class="perf-row"><span>初筛+SAM 验收指标</span><span id="perf-filter" class="num">≤80 ms</span></div>
+        <div class="perf-row"><span>VLM 验收指标</span><span id="perf-vlm" class="num">≤450 ms</span></div>
+        <div class="perf-row"><span>状态</span><span id="perf-status" class="badge">--</span></div>
+      </section>
+
+      <button id="btn-benchmark" class="btn-primary full">运行产线压测 (10Hz)</button>
+      <div id="bench-result" class="bench-result"></div>
+    </aside>
+  </main>
+
+  <!-- ============ 底部状态栏 ============ -->
+  <footer class="bottombar">
+    <span>后端：http://localhost:8562</span>
+    <span id="footer-msg">就绪</span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

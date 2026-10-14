@@ -1,0 +1,30 @@
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# ---------- 合成测试数据（首次运行测试 / 脚本时自动生成，无需入库） ----------
+data/synthetic/*.npz
+
+# ---------- 模型权重（体积大，下载方式见 weights/README.md） ----------
+weights/*.pth
+weights/*.pt
+weights/*.bin
+weights/*.gguf
+weights/*.onnx
+weights/*.safetensors
+
+# ---------- 运行产物 ----------
+logs/
+runs/
+*.log
+
+# ---------- 系统 / IDE ----------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
